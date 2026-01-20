@@ -1,19 +1,20 @@
 import nltk
 import string
+import random
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
 from nltk.classify import NaiveBayesClassifier
 from nltk.classify.util import accuracy
+from nltk.metrics import ConfusionMatrix
 
-try:
-    nltk.data.find("tokenizers/punkt")
-except LookupError:
-    nltk.download("punkt")
-
-try:
-    nltk.data.find("corpora/stopwords")
-except LookupError:
-    nltk.download("stopwords")
+# ---------------- NLTK Downloads (Run Once) ----------------
+resources = ["punkt", "stopwords", "wordnet", "omw-1.4"]
+for r in resources:
+    try:
+        nltk.data.find(r)
+    except LookupError:
+        nltk.download(r)
 
 # ---------------- Dataset ----------------
 data = [
@@ -48,39 +49,42 @@ data = [
     ("A new web series was released online", "Entertainment")
 ]
 
+# ---------------- Preprocessing ----------------
 stop_words = set(stopwords.words("english"))
+lemmatizer = WordNetLemmatizer()
 punctuation = set(string.punctuation)
+
+
+def preprocess(text: str):
+    """Tokenize, remove stopwords, punctuation, and lemmatize"""
+    words = word_tokenize(text.lower())
+    clean_words = [
+        lemmatizer.lemmatize(word)
+        for word in words
+        if word not in stop_words and word not in punctuation
+    ]
+    return clean_words
 
 
 def extract_features(text: str) -> dict:
     """
-    Converts text into a feature dictionary
+    Uses word frequency instead of boolean features
     """
-    words = word_tokenize(text.lower())
+    words = preprocess(text)
     features = {}
 
     for word in words:
-        if word not in stop_words and word not in punctuation:
-            features[word] = True
+        features[word] = features.get(word, 0) + 1
 
     return features
 
+
+# ---------------- Feature Set ----------------
 feature_set = [(extract_features(text), label) for text, label in data]
 
-train_set = feature_set[:16]
-test_set = feature_set[16:]
+# Shuffle for randomness
+random.shuffle(feature_set)
 
-classifier = NaiveBayesClassifier.train(train_set)
-
-print("Model Accuracy:", accuracy(classifier, test_set))
-
-print("\nMost Informative Features:")
-classifier.show_most_informative_features(10)
-
-while True:
-    test_text = input("\nEnter a sentence (or type 'exit'): ")
-    if test_text.lower() == "exit":
-        break
-
-    result = classifier.classify(extract_features(test_text))
-    print("Predicted Category:", result)
+# Train-Test Split (80-20)
+split_point = int(0.8 * len(feature_set))
+train_set = feature_set[:spl]()
